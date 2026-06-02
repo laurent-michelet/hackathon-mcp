@@ -1,43 +1,98 @@
-export type Delivery = {
-  id: string;
-  pickup_address: string;
-  dropoff_address: string;
-  customer_name: string;
-  distance_km: number;
-  price_eur: number;
-  slot: string;
-  items_count: number;
-};
+export interface Drive {
+  id?: string;
+  name?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+}
+
+export interface Client {
+  id?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+}
+
+export type DeliverySize = "s" | "m" | "l" | "xl";
+export type DeliveryTransport = "car" | "bike" | "walk" | "cargo_bike" | "electric_bike";
+
+export interface Delivery {
+  id?: string;
+  internal_reference?: string;
+  reference?: string;
+  withdrawal_start?: string;
+  withdrawal_end?: string;
+  delivery_start?: string;
+  delivery_end?: string;
+  tips?: number;
+  devise?: string;
+  size?: DeliverySize;
+  volume?: number;
+  transport_type?: DeliveryTransport;
+  drive?: Drive;
+  client?: Client;
+  trip?: {
+    duration?: number;
+    distance?: number;
+  };
+  is_regular_trip?: boolean;
+  additional_info?: string;
+  frozen?: boolean;
+}
+
+// ── Mock data (replace with real API call later) ─────────────────────────────
 
 export const mockDeliveries: Delivery[] = [
   {
-    id: "SHO-2026-0001",
-    pickup_address: "Carrefour City — 45 rue Oberkampf, Paris 11e",
-    dropoff_address: "12 rue des Pyrénées, Paris 20e",
-    customer_name: "Marie L.",
-    distance_km: 4.2,
-    price_eur: 8.5,
-    slot: "Aujourd'hui · 18:00 — 19:00",
-    items_count: 3,
+    id: "del_001",
+    internal_reference: "SHP-2026-001",
+    reference: "SHP-2026-001",
+    tips: 7.80,
+    devise: "EUR",
+    size: "m",
+    transport_type: "car",
+    withdrawal_start: "2026-06-10T14:30:00",
+    withdrawal_end: "2026-06-10T16:30:00",
+    delivery_start: "2026-06-10T15:00:00",
+    delivery_end: "2026-06-10T18:00:00",
+    drive: { name: "Leclerc Paridis", address: "Route de Paris", city: "Nantes", postal_code: "44300" },
+    client: { city: "Rezé", postal_code: "44400" },
+    trip: { duration: 480, distance: 3800 },
+    is_regular_trip: false,
   },
   {
-    id: "SHO-2026-0002",
-    pickup_address: "Monoprix — 22 cours Lafayette, Lyon 3e",
-    dropoff_address: "8 place Bellecour, Lyon 2e",
-    customer_name: "Antoine D.",
-    distance_km: 2.8,
-    price_eur: 6.9,
-    slot: "Aujourd'hui · 19:30 — 20:30",
-    items_count: 5,
+    id: "del_002",
+    internal_reference: "SHP-2026-002",
+    reference: "SHP-2026-002",
+    tips: 9.20,
+    devise: "EUR",
+    size: "l",
+    transport_type: "car",
+    withdrawal_start: "2026-06-10T09:30:00",
+    withdrawal_end: "2026-06-10T12:00:00",
+    delivery_start: "2026-06-10T10:00:00",
+    delivery_end: "2026-06-10T13:00:00",
+    drive: { name: "Carrefour Atlantis", city: "Nantes", postal_code: "44800" },
+    client: { city: "Bouguenais", postal_code: "44340" },
+    trip: { duration: 720, distance: 5200 },
+    is_regular_trip: true,
   },
   {
-    id: "SHO-2026-0003",
-    pickup_address: "Auchan — 117 cours Saint-Louis, Bordeaux",
-    dropoff_address: "34 rue Notre-Dame, Bordeaux Chartrons",
-    customer_name: "Sofia K.",
-    distance_km: 5.6,
-    price_eur: 10.2,
-    slot: "Demain · 11:00 — 12:00",
-    items_count: 7,
+    id: "del_003",
+    internal_reference: "SHP-2026-003",
+    reference: "SHP-2026-003",
+    tips: 6.40,
+    devise: "EUR",
+    size: "s",
+    transport_type: "bike",
+    withdrawal_start: "2026-06-10T10:00:00",
+    withdrawal_end: "2026-06-10T11:30:00",
+    delivery_start: "2026-06-10T10:30:00",
+    delivery_end: "2026-06-10T12:00:00",
+    drive: { name: "Super U Pont-Rousseau", city: "Rezé", postal_code: "44400" },
+    client: { city: "Rezé", postal_code: "44400" },
+    trip: { duration: 300, distance: 1600 },
+    is_regular_trip: false,
+    additional_info: "Digicode : 1234",
   },
 ];
