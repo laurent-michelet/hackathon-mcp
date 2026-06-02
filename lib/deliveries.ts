@@ -4,6 +4,8 @@ export interface Drive {
   address?: string;
   city?: string;
   postal_code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Client {
@@ -11,6 +13,8 @@ export interface Client {
   address?: string;
   city?: string;
   postal_code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export type DeliverySize = "s" | "m" | "l" | "xl";
@@ -55,8 +59,20 @@ export const mockDeliveries: Delivery[] = [
     withdrawal_end: "2026-06-10T16:30:00",
     delivery_start: "2026-06-10T15:00:00",
     delivery_end: "2026-06-10T18:00:00",
-    drive: { name: "Leclerc Paridis", address: "Route de Paris", city: "Nantes", postal_code: "44300" },
-    client: { city: "Rezé", postal_code: "44400" },
+    drive: {
+      name: "Leclerc Paridis",
+      address: "Route de Paris",
+      city: "Nantes",
+      postal_code: "44300",
+      latitude: 47.2519,
+      longitude: -1.5198,
+    },
+    client: {
+      city: "Rezé",
+      postal_code: "44400",
+      latitude: 47.1869,
+      longitude: -1.5489,
+    },
     trip: { duration: 480, distance: 3800 },
     is_regular_trip: false,
   },
@@ -72,8 +88,19 @@ export const mockDeliveries: Delivery[] = [
     withdrawal_end: "2026-06-10T12:00:00",
     delivery_start: "2026-06-10T10:00:00",
     delivery_end: "2026-06-10T13:00:00",
-    drive: { name: "Carrefour La Beaujoire", city: "Nantes", postal_code: "44300" },
-    client: { city: "Rezé", postal_code: "44400" },
+    drive: {
+      name: "Carrefour La Beaujoire",
+      city: "Nantes",
+      postal_code: "44300",
+      latitude: 47.2580,
+      longitude: -1.5249,
+    },
+    client: {
+      city: "Rezé",
+      postal_code: "44400",
+      latitude: 47.1908,
+      longitude: -1.5535,
+    },
     trip: { duration: 720, distance: 5200 },
     is_regular_trip: true,
   },
@@ -89,8 +116,19 @@ export const mockDeliveries: Delivery[] = [
     withdrawal_end: "2026-06-10T11:30:00",
     delivery_start: "2026-06-10T10:30:00",
     delivery_end: "2026-06-10T12:00:00",
-    drive: { name: "Super U Dalby", city: "Nantes", postal_code: "44000" },
-    client: { city: "Rezé", postal_code: "44400" },
+    drive: {
+      name: "Super U Dalby",
+      city: "Nantes",
+      postal_code: "44000",
+      latitude: 47.2278,
+      longitude: -1.5346,
+    },
+    client: {
+      city: "Rezé",
+      postal_code: "44400",
+      latitude: 47.1830,
+      longitude: -1.5755,
+    },
     trip: { duration: 300, distance: 1600 },
     is_regular_trip: false,
     additional_info: "Digicode : 1234",
