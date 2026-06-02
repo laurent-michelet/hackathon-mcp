@@ -176,31 +176,45 @@ const handler = createMcpHandler(
   (server) => {
 
     // ── Resource: widget HTML template ────────────────────────────────────────
+    // MIME type must be exactly "text/html;profile=mcp-app" — the bridge won't
+    // activate (and window.openai won't be injected) with any other value.
     server.resource(
       "shopopop-deliveries-widget",
       WIDGET_URI,
       {
         title: "Widget livraisons Shopopop",
         description: "Widget HTML affichant les livraisons disponibles.",
-        mimeType: "text/html+skybridge",
+        mimeType: "text/html;profile=mcp-app",
         _meta: {
+          ui: {
+            domain: "https://hackathon-mcp-smoky.vercel.app",
+            csp: {
+              connectDomains: ["https://hackathon-mcp-smoky.vercel.app"],
+              resourceDomains: ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+            },
+          },
           "openai/widgetDescription": "Livraisons Shopopop disponibles.",
-          "openai/widgetPrefersBorder": false,
           "openai/widgetCSP": {
-            "redirect_domains": ["https://hackathon-mcp-smoky.vercel.app"],
+            redirect_domains: ["https://hackathon-mcp-smoky.vercel.app"],
           },
         },
       },
       async () => ({
         contents: [{
           uri: WIDGET_URI,
-          mimeType: "text/html+skybridge",
+          mimeType: "text/html;profile=mcp-app",
           text: deliveryCarouselHtml,
           _meta: {
+            ui: {
+              domain: "https://hackathon-mcp-smoky.vercel.app",
+              csp: {
+                connectDomains: ["https://hackathon-mcp-smoky.vercel.app"],
+                resourceDomains: ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+              },
+            },
             "openai/widgetDescription": "Livraisons Shopopop disponibles.",
-            "openai/widgetPrefersBorder": false,
             "openai/widgetCSP": {
-              "redirect_domains": ["https://hackathon-mcp-smoky.vercel.app"],
+              redirect_domains: ["https://hackathon-mcp-smoky.vercel.app"],
             },
           },
         }],
@@ -208,11 +222,6 @@ const handler = createMcpHandler(
     );
 
     // ── Tool 1 (data): list_available_deliveries ──────────────────────────────
-    // Données brutes uniquement — PAS de widget ici.
-    // Toujours suivi d'un outil render selon le contexte :
-    //   • render_deliveries_widget  → liste complète
-    //   • render_featured_delivery  → livraison mise en avant sur un trajet
-    //   • render_delivery_detail    → détail complet d'une livraison
     server.registerTool(
       "list_available_deliveries",
       {
@@ -225,6 +234,11 @@ const handler = createMcpHandler(
         inputSchema: {
           limit: z.number().int().min(1).max(10).optional()
             .describe("Nombre max de livraisons (défaut : toutes)"),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+          destructiveHint: false,
         },
         _meta: {
           "openai/toolInvocation/invoking": "Recherche des livraisons disponibles…",
@@ -259,7 +273,9 @@ const handler = createMcpHandler(
           deliveries: z.array(DeliverySchema).describe("Livraisons retournées par list_available_deliveries"),
           context: z.string().optional().describe("Contexte affiché (ex: 'Nantes → Rezé · matin')"),
         },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
         _meta: {
+          ui: { resourceUri: WIDGET_URI },
           "openai/outputTemplate": WIDGET_URI,
           "openai/toolInvocation/invoking": "Chargement du widget…",
           "openai/toolInvocation/invoked": "Livraisons affichées.",
@@ -268,6 +284,7 @@ const handler = createMcpHandler(
       async ({ deliveries, context }) => ({
         content: [{ type: "text", text: `${deliveries.length} livraison(s) affichée(s).` }],
         structuredContent: { view: "list", deliveries, context },
+        _meta: { "openai/widgetCSP": { redirect_domains: ["https://hackathon-mcp-smoky.vercel.app"] } },
       }),
     );
 
@@ -284,7 +301,9 @@ const handler = createMcpHandler(
           others_count: z.number().int().min(0).optional().describe("Nombre d'autres livraisons compatibles"),
           context: z.string().optional().describe("Contexte (ex: '3 livraisons sur votre trajet')"),
         },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
         _meta: {
+          ui: { resourceUri: WIDGET_URI },
           "openai/outputTemplate": WIDGET_URI,
           "openai/toolInvocation/invoking": "Chargement du widget…",
           "openai/toolInvocation/invoked": "Livraison affichée.",
@@ -293,6 +312,7 @@ const handler = createMcpHandler(
       async ({ delivery, others_count, context }) => ({
         content: [{ type: "text", text: `Livraison ${delivery.reference} affichée.` }],
         structuredContent: { view: "featured", delivery, others_count, context },
+        _meta: { "openai/widgetCSP": { redirect_domains: ["https://hackathon-mcp-smoky.vercel.app"] } },
       }),
     );
 
@@ -309,7 +329,9 @@ const handler = createMcpHandler(
           user_departure: z.string().optional().describe("Lieu de départ (ex: 'Votre départ · Nantes Sud')"),
           user_arrival: z.string().optional().describe("Lieu d'arrivée (ex: 'Votre arrivée · Rezé')"),
         },
+        annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
         _meta: {
+          ui: { resourceUri: WIDGET_URI },
           "openai/outputTemplate": WIDGET_URI,
           "openai/toolInvocation/invoking": "Chargement du widget…",
           "openai/toolInvocation/invoked": "Détail affiché.",
@@ -318,6 +340,7 @@ const handler = createMcpHandler(
       async ({ delivery, user_departure, user_arrival }) => ({
         content: [{ type: "text", text: `Détail de la livraison ${delivery.reference} affiché.` }],
         structuredContent: { view: "detail", delivery, user_departure, user_arrival },
+        _meta: { "openai/widgetCSP": { redirect_domains: ["https://hackathon-mcp-smoky.vercel.app"] } },
       }),
     );
   },
