@@ -1,6 +1,7 @@
 import { createMcpHandler } from "@vercel/mcp-adapter";
 import { z } from "zod";
 import { mockDeliveries, type Delivery } from "../../../lib/deliveries";
+import { geocode, haversine } from "../../../lib/geo";
 import { deliveryCarouselHtml } from "../../../lib/widget-html";
 
 export const runtime = "nodejs";
@@ -126,6 +127,15 @@ Toujours appeler les outils dans cet ordre :
 | Mentionne un trajet, un détour, "sur mon chemin", "en rentrant" | \`render_featured_delivery\` avec la livraison la plus compatible (remplir \`others_count\` avec le nombre de livraisons restantes) |
 | Demande les détails d'une livraison spécifique | \`render_delivery_detail\` avec les champs \`user_departure\` et \`user_arrival\` déduits du contexte |
 
+### Recherche par localisation (list_deliveries_near)
+- Utilise \`list_deliveries_near\` quand l'utilisateur veut filtrer par proximité géographique : "près de", "autour de", "à côté de", "dans le quartier de", "à X km de".
+- **Si l'utilisateur précise un lieu connu** (gare, monument, ville, centre commercial) → passe directement \`latitude\` et \`longitude\` que tu connais depuis ton entraînement.
+- **Si l'utilisateur donne une adresse précise** (rue, code postal) → passe l'\`address\` en string, le serveur la géocodera.
+- **Si l'utilisateur dit "près de moi" / "autour de moi" / ne précise aucun lieu** → POSE-LUI la question avant d'appeler le tool :
+  > « Autour de quelle adresse ou ville souhaites-tu chercher des livraisons ? »
+- **Ne devine JAMAIS la position de l'utilisateur.** Tu n'as PAS accès à sa géolocalisation (ni GPS, ni IP). La seule façon de connaître sa position est de la lui demander.
+- N'invente JAMAIS d'adresse à la place de l'utilisateur.
+
 ### Règles strictes
 - Ne **jamais** appeler deux outils render dans la même réponse.
 - Toujours passer l'objet livraison **complet** (tel que retourné par list_available_deliveries) aux outils render.
@@ -140,6 +150,8 @@ const DriveSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   postal_code: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 const ClientSchema = z.object({
@@ -147,6 +159,8 @@ const ClientSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   postal_code: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 const DeliverySchema = z.object({
@@ -237,6 +251,110 @@ const handler = createMcpHandler(
         return {
           content: [{ type: "text", text: `${deliveries.length} livraison(s) trouvée(s) :\n${summary}` }],
           structuredContent: { deliveries },
+        };
+      },
+    );
+
+    // ── Tool (data): list_deliveries_near ────────────────────────────────────
+    // Filtre les livraisons autour d'une adresse ou de coordonnées GPS.
+    // Si l'utilisateur ne précise PAS de lieu, ChatGPT doit lui demander
+    // l'adresse AVANT d'appeler ce tool (voir description + system prompt).
+    server.registerTool(
+      "list_deliveries_near",
+      {
+        title: "Trouver les livraisons autour d'un lieu",
+        description:
+          "Recherche les livraisons Shopopop disponibles autour d'une adresse ou de coordonnées GPS, " +
+          "triées par distance croissante (point de retrait). " +
+          "⚠️ AVANT d'appeler ce tool, vérifie que l'utilisateur a précisé UN lieu. " +
+          "Si l'utilisateur dit 'près de moi', 'autour de moi', ou ne mentionne aucun lieu, " +
+          "demande-lui d'abord : « Autour de quelle adresse ou ville souhaites-tu chercher ? » " +
+          "puis attends sa réponse avant d'appeler ce tool. " +
+          "Si tu connais avec certitude les coordonnées d'un lieu connu (gare, monument, centre commercial), " +
+          "passe directement latitude/longitude. Sinon, passe l'adresse en string : le serveur géocodera. " +
+          "N'invente JAMAIS une adresse à la place de l'utilisateur. " +
+          "Tu n'as PAS accès à la géolocalisation de l'utilisateur.",
+        inputSchema: {
+          address: z.string().optional()
+            .describe("Adresse, ville, ou nom de lieu (ex: 'Place du Bouffay, Nantes')"),
+          latitude: z.number().optional()
+            .describe("Latitude si tu connais le lieu (lieux célèbres uniquement)"),
+          longitude: z.number().optional()
+            .describe("Longitude si tu connais le lieu (lieux célèbres uniquement)"),
+          radius_km: z.number().min(0.5).max(50).default(5)
+            .describe("Rayon de recherche en km (défaut : 5)"),
+        },
+        _meta: {
+          "openai/toolInvocation/invoking": "Recherche des livraisons à proximité…",
+          "openai/toolInvocation/invoked": "Livraisons à proximité trouvées.",
+        },
+      },
+      async ({ address, latitude, longitude, radius_km }) => {
+        const hasCoords = typeof latitude === "number" && typeof longitude === "number";
+        if (!address && !hasCoords) {
+          return {
+            content: [{
+              type: "text",
+              text:
+                "Adresse requise. Demande à l'utilisateur : " +
+                "« Autour de quelle adresse ou ville souhaites-tu chercher des livraisons ? » " +
+                "Puis rappelle ce tool avec sa réponse.",
+            }],
+            isError: true,
+          };
+        }
+
+        const center = hasCoords
+          ? { latitude: latitude!, longitude: longitude! }
+          : await geocode(address!);
+
+        if (!center) {
+          return {
+            content: [{
+              type: "text",
+              text: `Adresse introuvable : « ${address} ». Demande à l'utilisateur de préciser (ville, code postal).`,
+            }],
+            isError: true,
+          };
+        }
+
+        const radius = radius_km ?? 5;
+        const candidates = mockDeliveries
+          .filter((d) =>
+            typeof d.drive?.latitude === "number" &&
+            typeof d.drive?.longitude === "number"
+          )
+          .map((d) => ({
+            delivery: d,
+            distance_km: haversine(center, {
+              latitude: d.drive!.latitude!,
+              longitude: d.drive!.longitude!,
+            }),
+          }))
+          .filter(({ distance_km }) => distance_km <= radius)
+          .sort((a, b) => a.distance_km - b.distance_km);
+
+        const deliveries: Delivery[] = candidates.map(({ delivery, distance_km }) => ({
+          ...delivery,
+          trip: { ...delivery.trip, distance: Math.round(distance_km * 1000) },
+        }));
+
+        const summary = candidates.length === 0
+          ? `Aucune livraison dans un rayon de ${radius} km autour de ${address ?? "ce point"}.`
+          : candidates.map(({ delivery, distance_km }) =>
+              `• ${delivery.reference} — ${delivery.drive?.name ?? ""} → ${delivery.client?.city ?? ""} (${distance_km.toFixed(1)} km)`
+            ).join("\n");
+
+        return {
+          content: [{
+            type: "text",
+            text: `${candidates.length} livraison(s) dans un rayon de ${radius} km :\n${summary}`,
+          }],
+          structuredContent: {
+            deliveries,
+            center: { latitude: center.latitude, longitude: center.longitude },
+            radius_km: radius,
+          },
         };
       },
     );
