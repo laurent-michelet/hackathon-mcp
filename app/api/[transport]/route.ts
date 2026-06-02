@@ -77,20 +77,26 @@ const handler = createMcpHandler(
       }),
     );
 
-    // ── Tool 1: list_available_deliveries ─────────────────────────────────────
-    // "openai/outputTemplate" est dans la définition → ChatGPT affiche le widget
+    // ── Tool 1 (data): list_available_deliveries ──────────────────────────────
+    // Données brutes uniquement — PAS de widget ici.
+    // Toujours suivi d'un outil render selon le contexte :
+    //   • render_deliveries_widget  → liste complète
+    //   • render_featured_delivery  → livraison mise en avant sur un trajet
+    //   • render_delivery_detail    → détail complet d'une livraison
     server.registerTool(
       "list_available_deliveries",
       {
-        title: "Livraisons disponibles",
-        description: "Liste les livraisons Shopopop disponibles et les affiche dans un widget interactif.",
+        title: "Récupérer les livraisons",
+        description:
+          "Récupère les livraisons Shopopop disponibles. " +
+          "Après cet appel, toujours appeler un outil render selon le contexte : " +
+          "render_deliveries_widget pour une liste, render_featured_delivery si l'utilisateur mentionne un trajet, " +
+          "render_delivery_detail pour le détail d'une livraison spécifique.",
         inputSchema: {
           limit: z.number().int().min(1).max(10).optional()
             .describe("Nombre max de livraisons (défaut : toutes)"),
         },
         _meta: {
-          "openai/outputTemplate": WIDGET_URI,
-          "openai/widgetAccessible": false,
           "openai/toolInvocation/invoking": "Recherche des livraisons disponibles…",
           "openai/toolInvocation/invoked": "Livraisons trouvées.",
         },
@@ -106,17 +112,43 @@ const handler = createMcpHandler(
 
         return {
           content: [{ type: "text", text: `${deliveries.length} livraison(s) trouvée(s) :\n${summary}` }],
-          structuredContent: { view: "list", deliveries },
+          structuredContent: { deliveries },
         };
       },
     );
 
-    // ── Tool 2: render_featured_delivery ──────────────────────────────────────
+    // ── Tool 2 (render): render_deliveries_widget — liste complète ────────────
+    server.registerTool(
+      "render_deliveries_widget",
+      {
+        title: "Afficher la liste des livraisons",
+        description:
+          "Affiche toutes les livraisons dans un widget interactif. " +
+          "Appeler après list_available_deliveries quand l'utilisateur veut voir toutes les livraisons disponibles.",
+        inputSchema: {
+          deliveries: z.array(DeliverySchema).describe("Livraisons retournées par list_available_deliveries"),
+          context: z.string().optional().describe("Contexte affiché (ex: 'Nantes → Rezé · matin')"),
+        },
+        _meta: {
+          "openai/outputTemplate": WIDGET_URI,
+          "openai/toolInvocation/invoking": "Chargement du widget…",
+          "openai/toolInvocation/invoked": "Livraisons affichées.",
+        },
+      },
+      async ({ deliveries, context }) => ({
+        content: [{ type: "text", text: `${deliveries.length} livraison(s) affichée(s).` }],
+        structuredContent: { view: "list", deliveries, context },
+      }),
+    );
+
+    // ── Tool 3 (render): render_featured_delivery — livraison mise en avant ───
     server.registerTool(
       "render_featured_delivery",
       {
-        title: "Livraison mise en avant",
-        description: "Affiche une livraison mise en avant avec les autres disponibles. Appelle d'abord list_available_deliveries.",
+        title: "Afficher une livraison mise en avant",
+        description:
+          "Affiche une livraison mise en avant dans un widget. " +
+          "Appeler après list_available_deliveries quand l'utilisateur mentionne un trajet ou demande la meilleure livraison compatible.",
         inputSchema: {
           delivery: DeliverySchema.describe("La livraison à mettre en avant"),
           others_count: z.number().int().min(0).optional().describe("Nombre d'autres livraisons compatibles"),
@@ -134,12 +166,14 @@ const handler = createMcpHandler(
       }),
     );
 
-    // ── Tool 3: render_delivery_detail ────────────────────────────────────────
+    // ── Tool 4 (render): render_delivery_detail — détail complet ─────────────
     server.registerTool(
       "render_delivery_detail",
       {
-        title: "Détail d'une livraison",
-        description: "Affiche le détail complet d'une livraison. Appelle d'abord list_available_deliveries.",
+        title: "Afficher le détail d'une livraison",
+        description:
+          "Affiche le détail complet d'une livraison dans un widget. " +
+          "Appeler après list_available_deliveries quand l'utilisateur demande plus d'informations sur une livraison spécifique.",
         inputSchema: {
           delivery: DeliverySchema.describe("La livraison à détailler"),
           user_departure: z.string().optional().describe("Lieu de départ (ex: 'Votre départ · Nantes Sud')"),
