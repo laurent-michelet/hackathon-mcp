@@ -44,9 +44,9 @@ export interface Delivery {
 
 export const mockDeliveries: Delivery[] = [
   {
-    id: "del_001",
-    internal_reference: "SHP-2026-001",
-    reference: "SHP-2026-001",
+    id: "294337",
+    internal_reference: "NB3R",
+    reference: "DX321317",
     tips: 7.80,
     devise: "EUR",
     size: "m",
@@ -61,9 +61,9 @@ export const mockDeliveries: Delivery[] = [
     is_regular_trip: false,
   },
   {
-    id: "del_002",
-    internal_reference: "SHP-2026-002",
-    reference: "SHP-2026-002",
+    id: "294338",
+    internal_reference: "294338",
+    reference: "DX321318",
     tips: 9.20,
     devise: "EUR",
     size: "l",
@@ -78,9 +78,9 @@ export const mockDeliveries: Delivery[] = [
     is_regular_trip: true,
   },
   {
-    id: "del_003",
-    internal_reference: "SHP-2026-003",
-    reference: "SHP-2026-003",
+    id: "294339",
+    internal_reference: "294339",
+    reference: "DX321319",
     tips: 6.40,
     devise: "EUR",
     size: "s",
