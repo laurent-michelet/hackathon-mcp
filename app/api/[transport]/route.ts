@@ -55,9 +55,25 @@ const handler = createMcpHandler(
     server.resource(
       "shopopop-deliveries-widget",
       WIDGET_URI,
-      { mimeType: "text/html;profile=mcp-app" },
+      {
+        title: "Widget livraisons Shopopop",
+        description: "Widget HTML affichant les livraisons disponibles.",
+        mimeType: "text/html+skybridge",
+        _meta: {
+          "openai/widgetDescription": "Livraisons Shopopop disponibles.",
+          "openai/widgetPrefersBorder": false,
+        },
+      },
       async () => ({
-        contents: [{ uri: WIDGET_URI, mimeType: "text/html;profile=mcp-app", text: deliveryCarouselHtml }],
+        contents: [{
+          uri: WIDGET_URI,
+          mimeType: "text/html+skybridge",
+          text: deliveryCarouselHtml,
+          _meta: {
+            "openai/widgetDescription": "Livraisons Shopopop disponibles.",
+            "openai/widgetPrefersBorder": false,
+          },
+        }],
       }),
     );
 
@@ -83,6 +99,11 @@ const handler = createMcpHandler(
         return {
           content: [{ type: "text", text: `${deliveries.length} livraison(s) trouvée(s) :\n${summary}` }],
           structuredContent: { deliveries },
+          _meta: {
+            "openai/widgetAccessible": false,
+            "openai/toolInvocation/invoking": "Recherche des livraisons disponibles…",
+            "openai/toolInvocation/invoked": "Livraisons trouvées.",
+          },
         };
       },
     );
@@ -150,7 +171,11 @@ const handler = createMcpHandler(
     );
   },
   {},
-  { basePath: "/api", maxDuration: 60, verboseLogs: true },
+  {
+    basePath: "/api",
+    maxDuration: 60,
+    verboseLogs: true,
+  },
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
