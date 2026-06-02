@@ -187,7 +187,7 @@ const handler = createMcpHandler(
           "openai/widgetDescription": "Livraisons Shopopop disponibles.",
           "openai/widgetPrefersBorder": false,
           "openai/widgetCSP": {
-            "redirect_domains": ["https://ancient-darkness-9df7.shopopop.workers.dev"],
+            "redirect_domains": ["https://hackathon-mcp-smoky.vercel.app"],
           },
         },
       },
@@ -200,7 +200,7 @@ const handler = createMcpHandler(
             "openai/widgetDescription": "Livraisons Shopopop disponibles.",
             "openai/widgetPrefersBorder": false,
             "openai/widgetCSP": {
-              "redirect_domains": ["https://ancient-darkness-9df7.shopopop.workers.dev"],
+              "redirect_domains": ["https://hackathon-mcp-smoky.vercel.app"],
             },
           },
         }],
