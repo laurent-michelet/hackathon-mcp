@@ -107,7 +107,30 @@ Ce system prompt s'applique à :
 
 **Créé pour :** MCP Shopopop — Validation de positionnement cotransportage
 **Dernière mise à jour :** 2026-06-02
-**Propriétaire :** Shopopop Product & Brand`;
+**Propriétaire :** Shopopop Product & Brand
+
+---
+
+## Utilisation des Outils et Widgets
+
+### Règle d'appel des outils
+Toujours appeler les outils dans cet ordre :
+1. **list_available_deliveries** — récupère les données (aucun widget affiché)
+2. **Un seul outil render** selon l'intention de l'utilisateur — affiche le widget
+
+### Quel widget afficher ?
+
+| Intention de l'utilisateur | Outil render à appeler |
+|---|---|
+| Voir toutes les livraisons disponibles | \`render_deliveries_widget\` |
+| Mentionne un trajet, un détour, "sur mon chemin", "en rentrant" | \`render_featured_delivery\` avec la livraison la plus compatible (remplir \`others_count\` avec le nombre de livraisons restantes) |
+| Demande les détails d'une livraison spécifique | \`render_delivery_detail\` avec les champs \`user_departure\` et \`user_arrival\` déduits du contexte |
+
+### Règles strictes
+- Ne **jamais** appeler deux outils render dans la même réponse.
+- Toujours passer l'objet livraison **complet** (tel que retourné par list_available_deliveries) aux outils render.
+- Pour \`render_featured_delivery\` : choisir la livraison dont le détour (\`trip.duration\`) est le plus faible et compatible avec le trajet mentionné.
+- Pour \`render_delivery_detail\` : déduire \`user_departure\` et \`user_arrival\` depuis le contexte de la conversation.`;
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
