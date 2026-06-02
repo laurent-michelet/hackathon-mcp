@@ -77,15 +77,23 @@ const handler = createMcpHandler(
       }),
     );
 
-    // ── Tool 1 (data): list_available_deliveries ──────────────────────────────
-    // Returns raw deliveries — no widget template attached.
-    // The model reads this data before deciding which render tool to call.
-    server.tool(
+    // ── Tool 1: list_available_deliveries ─────────────────────────────────────
+    // "openai/outputTemplate" est dans la définition → ChatGPT affiche le widget
+    server.registerTool(
       "list_available_deliveries",
-      "Récupère les livraisons Shopopop disponibles. Appelle ensuite render_deliveries_widget pour afficher le résultat.",
       {
-        limit: z.number().int().min(1).max(10).optional()
-          .describe("Nombre max de livraisons (défaut : toutes)"),
+        title: "Livraisons disponibles",
+        description: "Liste les livraisons Shopopop disponibles et les affiche dans un widget interactif.",
+        inputSchema: {
+          limit: z.number().int().min(1).max(10).optional()
+            .describe("Nombre max de livraisons (défaut : toutes)"),
+        },
+        _meta: {
+          "openai/outputTemplate": WIDGET_URI,
+          "openai/widgetAccessible": false,
+          "openai/toolInvocation/invoking": "Recherche des livraisons disponibles…",
+          "openai/toolInvocation/invoked": "Livraisons trouvées.",
+        },
       },
       async ({ limit }) => {
         const deliveries: Delivery[] = typeof limit === "number"
@@ -98,75 +106,54 @@ const handler = createMcpHandler(
 
         return {
           content: [{ type: "text", text: `${deliveries.length} livraison(s) trouvée(s) :\n${summary}` }],
-          structuredContent: { deliveries },
-          _meta: {
-            "openai/widgetAccessible": false,
-            "openai/toolInvocation/invoking": "Recherche des livraisons disponibles…",
-            "openai/toolInvocation/invoked": "Livraisons trouvées.",
-          },
+          structuredContent: { view: "list", deliveries },
         };
       },
     );
 
-    // ── Tool 2 (render): render_deliveries_widget — list view ─────────────────
-    server.tool(
-      "render_deliveries_widget",
-      "Affiche la liste des livraisons dans un widget interactif. Appelle d'abord list_available_deliveries.",
-      {
-        deliveries: z.array(DeliverySchema).describe("Livraisons retournées par list_available_deliveries"),
-        context: z.string().optional().describe("Contexte affiché en haut de la carte (ex: 'Nantes → Rezé · matin')"),
-      },
-      async ({ deliveries, context }) => ({
-        content: [{ type: "text", text: `${deliveries.length} livraison(s) affichée(s).` }],
-        structuredContent: { view: "list", deliveries, context },
-        _meta: {
-          ui: { resourceUri: WIDGET_URI },
-          "openai/outputTemplate": WIDGET_URI,
-          "openai/toolInvocation/invoking": "Chargement du widget…",
-          "openai/toolInvocation/invoked": "Livraisons affichées.",
-        },
-      }),
-    );
-
-    // ── Tool 3 (render): render_featured_delivery — vue mise en avant ─────────
-    server.tool(
+    // ── Tool 2: render_featured_delivery ──────────────────────────────────────
+    server.registerTool(
       "render_featured_delivery",
-      "Affiche une livraison mise en avant (résultat principal + nombre d'autres disponibles). Appelle d'abord list_available_deliveries.",
       {
-        delivery: DeliverySchema.describe("La livraison à mettre en avant"),
-        others_count: z.number().int().min(0).optional().describe("Nombre d'autres livraisons compatibles"),
-        context: z.string().optional().describe("Contexte affiché (ex: '3 livraisons sur votre trajet')"),
-      },
-      async ({ delivery, others_count, context }) => ({
-        content: [{ type: "text", text: `Livraison ${delivery.reference} affichée en mise en avant.` }],
-        structuredContent: { view: "featured", delivery, others_count, context },
+        title: "Livraison mise en avant",
+        description: "Affiche une livraison mise en avant avec les autres disponibles. Appelle d'abord list_available_deliveries.",
+        inputSchema: {
+          delivery: DeliverySchema.describe("La livraison à mettre en avant"),
+          others_count: z.number().int().min(0).optional().describe("Nombre d'autres livraisons compatibles"),
+          context: z.string().optional().describe("Contexte (ex: '3 livraisons sur votre trajet')"),
+        },
         _meta: {
-          ui: { resourceUri: WIDGET_URI },
           "openai/outputTemplate": WIDGET_URI,
           "openai/toolInvocation/invoking": "Chargement du widget…",
           "openai/toolInvocation/invoked": "Livraison affichée.",
         },
+      },
+      async ({ delivery, others_count, context }) => ({
+        content: [{ type: "text", text: `Livraison ${delivery.reference} affichée.` }],
+        structuredContent: { view: "featured", delivery, others_count, context },
       }),
     );
 
-    // ── Tool 4 (render): render_delivery_detail — vue détail ─────────────────
-    server.tool(
+    // ── Tool 3: render_delivery_detail ────────────────────────────────────────
+    server.registerTool(
       "render_delivery_detail",
-      "Affiche le détail complet d'une livraison (route, horaires, contribution). Appelle d'abord list_available_deliveries.",
       {
-        delivery: DeliverySchema.describe("La livraison à détailler"),
-        user_departure: z.string().optional().describe("Lieu de départ de l'utilisateur (ex: 'Votre départ · Nantes Sud')"),
-        user_arrival: z.string().optional().describe("Lieu d'arrivée de l'utilisateur (ex: 'Votre arrivée · Rezé')"),
-      },
-      async ({ delivery, user_departure, user_arrival }) => ({
-        content: [{ type: "text", text: `Détail de la livraison ${delivery.reference} affiché.` }],
-        structuredContent: { view: "detail", delivery, user_departure, user_arrival },
+        title: "Détail d'une livraison",
+        description: "Affiche le détail complet d'une livraison. Appelle d'abord list_available_deliveries.",
+        inputSchema: {
+          delivery: DeliverySchema.describe("La livraison à détailler"),
+          user_departure: z.string().optional().describe("Lieu de départ (ex: 'Votre départ · Nantes Sud')"),
+          user_arrival: z.string().optional().describe("Lieu d'arrivée (ex: 'Votre arrivée · Rezé')"),
+        },
         _meta: {
-          ui: { resourceUri: WIDGET_URI },
           "openai/outputTemplate": WIDGET_URI,
           "openai/toolInvocation/invoking": "Chargement du widget…",
           "openai/toolInvocation/invoked": "Détail affiché.",
         },
+      },
+      async ({ delivery, user_departure, user_arrival }) => ({
+        content: [{ type: "text", text: `Détail de la livraison ${delivery.reference} affiché.` }],
+        structuredContent: { view: "detail", delivery, user_departure, user_arrival },
       }),
     );
   },
