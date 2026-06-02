@@ -1,17 +1,11 @@
 "use client";
 
-// Redirect page for ChatGPT widget deeplinks.
-// Opened by openExternal() in SFSafariViewController, then jumps to the custom scheme.
-// Flow: https://...vercel.app/chatgpt?delivery_internal_reference=NB3R
-//    → window.location.href = com.dev.shopopop://search?delivery_internal_reference=NB3R
-//    → iOS opens the app
-
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-const BUNDLE_ID = "com.dev.shopopop"; // preprod — use "com.shopopop.com" for production
+const BUNDLE_ID = "com.dev.shopopop";
 
-export default function ChatGPTDeeplinkPage() {
+function DeeplinkRedirect() {
   const searchParams = useSearchParams();
   const ref = searchParams.get("delivery_internal_reference");
 
@@ -19,7 +13,6 @@ export default function ChatGPTDeeplinkPage() {
     const deeplink = ref
       ? `${BUNDLE_ID}://search?delivery_internal_reference=${encodeURIComponent(ref)}`
       : `${BUNDLE_ID}://search`;
-
     window.location.href = deeplink;
   }, [ref]);
 
@@ -37,5 +30,13 @@ export default function ChatGPTDeeplinkPage() {
       <div style={{ fontSize: "32px" }}>🛍️</div>
       <p style={{ fontSize: "16px", fontWeight: 600 }}>Ouverture de Shopopop…</p>
     </div>
+  );
+}
+
+export default function ChatGPTDeeplinkPage() {
+  return (
+    <Suspense>
+      <DeeplinkRedirect />
+    </Suspense>
   );
 }
